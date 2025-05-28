@@ -4,7 +4,9 @@ module Data.HasCacBDD.Visuals (
   genGraph,
   genGraphWith,
   showGraph,
-  svgGraph
+  svgGraph,
+  showGraphMac,
+  svgGraphMac
 ) where
 
 import Data.Maybe (fromJust)
@@ -50,6 +52,24 @@ genGraphWith myShow myb
       sinks = "Bot [label=\"0\",shape=\"box\"];\n" ++ "Top [label=\"1\",shape=\"box\"];\n"
       rankings = concat [ "{ rank=same; "++ unwords (nodesOf v) ++ " }\n" | v <- allVarsOf myb ]
       nodesOf v = map (("n"++).show.snd) $ filter ( \(b,_) -> firstVarOf b == Just v ) topdone
+
+-- | Display the graph of a BDD with dot.
+showGraphMac :: Bdd -> IO ()
+showGraphMac b = do
+  (inp,_,_,pid) <- runInteractiveProcess "/opt/homebrew/bin/dot" ["-Tx11"] Nothing Nothing
+  hPutStr inp (genGraph b)
+  hFlush inp
+  hClose inp
+  _ <- waitForProcess pid
+  return ()
+
+-- | Generate SVG of a BDD with dot.
+svgGraphMac :: Bdd -> IO String
+svgGraphMac b = do
+  (exitCode,out,err) <- readProcessWithExitCode "/opt/homebrew/bin/dot" ["-Tsvg" ] (genGraph b)
+  case exitCode of
+    ExitSuccess -> return $ (unlines.tail.lines) out
+    ExitFailure n -> error $ "dot -Tsvg failed with exit code " ++ show n ++ " and error: " ++ err
 
 -- | Display the graph of a BDD with dot.
 showGraph :: Bdd -> IO ()
