@@ -106,9 +106,13 @@ findValidPath (p:ps) = do
   exists <- fileExists p
   if exists then return (Just p) else findValidPath ps
 
+
+paths :: [String]
+paths = ["/usr/bin/dot", "/opt/homebrew/bin/dot", "C:\\Program Files\\Graphviz\\bin\\dot.exe"]
+
 -- |  Generate SVG of a BDD with dot, checking multiple paths.
-svgGraphWithPaths :: [FilePath] -> Bdd -> IO (Maybe String)
-svgGraphWithPaths paths b = do
+svgGraphWithPaths :: Bdd -> IO (Maybe String)
+svgGraphWithPaths b = do
   validPath <- findValidPath paths
   case validPath of
     Just path -> do
@@ -119,8 +123,8 @@ svgGraphWithPaths paths b = do
     Nothing -> return Nothing
 
 -- | Display the graph of a BDD with dot, checking multiple paths.
-showGraphWithPaths :: [FilePath] -> Bdd -> IO ()
-showGraphWithPaths paths b = do
+showGraphWithPaths :: Bdd -> IO ()
+showGraphWithPaths b = do
   validPath <- findValidPath paths
   case validPath of
     Just path -> do
