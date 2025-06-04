@@ -6,13 +6,18 @@ module Data.HasCacBDD.Visuals (
   showGraph,
   svgGraph,
   showGraphMac,
-  svgGraphMac
+  svgGraphMac,
+  showGraphWithPaths,
+  svgGraphWithPaths,
 ) where
 
 import Data.Maybe (fromJust)
 import System.Exit
 import System.IO
 import System.Process
+
+import System.Directory (doesFileExist)
+
 
 import Data.HasCacBDD
 
@@ -88,3 +93,41 @@ svgGraph b = do
   case exitCode of
     ExitSuccess -> return $ (unlines.tail.lines) out
     ExitFailure n -> error $ "dot -Tsvg failed with exit code " ++ show n ++ " and error: " ++ err
+
+
+-- | Check if a file exists
+fileExists :: FilePath -> IO Bool
+fileExists = doesFileExist
+
+-- | Find a valid path from list
+findValidPath :: [FilePath] -> IO (Maybe FilePath)
+findValidPath [] = return Nothing
+findValidPath (p:ps) = do
+  exists <- fileExists p
+  if exists then return (Just p) else findValidPath ps
+
+-- |  Generate SVG of a BDD with dot, checking multiple paths.
+svgGraphWithPaths :: [FilePath] -> Bdd -> IO (Maybe String)
+svgGraphWithPaths paths b = do
+  validPath <- findValidPath paths
+  case validPath of
+    Just path -> do
+      (exitCode, out, err) <- readProcessWithExitCode path ["-Tsvg"] (genGraph b) -- path instead of raw text
+      case exitCode of
+        ExitSuccess -> return $ Just ((unlines.tail.lines) out)
+        ExitFailure n -> error $ "dot -Tsvg failed with exit code " ++ show n ++ " and error: " ++ err
+    Nothing -> return Nothing
+
+-- | Display the graph of a BDD with dot, checking multiple paths.
+showGraphWithPaths :: [FilePath] -> Bdd -> IO ()
+showGraphWithPaths paths b = do
+  validPath <- findValidPath paths
+  case validPath of
+    Just path -> do
+      (inp,_,_,pid) <- runInteractiveProcess path ["-Tx11"] Nothing Nothing
+      hPutStr inp (genGraph b)
+      hFlush inp
+      hClose inp
+      _ <- waitForProcess pid
+      return ()
+    Nothing -> error "No valid dot executable found in the provided paths."
